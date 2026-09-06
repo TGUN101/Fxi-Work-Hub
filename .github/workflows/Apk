@@ -1,0 +1,66 @@
+name: Build FXI Work Hub APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Unpack FXI Work Hub
+        run: |
+          mkdir -p build-src
+          unzip -q FXI_Work_Hub_v0.1.0_BUILD_READY.zip -d build-src
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        working-directory: build-src/FXI_Work_Hub_v0.1.0
+        run: npm install --legacy-peer-deps
+
+      - name: Generate Android project
+        working-directory: build-src/FXI_Work_Hub_v0.1.0
+        env:
+          CI: "1"
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: Build Release APK
+        working-directory: build-src/FXI_Work_Hub_v0.1.0/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        run: |
+          mkdir -p output
+          cp build-src/FXI_Work_Hub_v0.1.0/android/app/build/outputs/apk/release/app-release.apk \
+             output/FXI-Work-Hub-v0.1.0.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FXI-Work-Hub-v0.1.0-APK
+          path: output/FXI-Work-Hub-v0.1.0.apk
+          retention-days: 30
