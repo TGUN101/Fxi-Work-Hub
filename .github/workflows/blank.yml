@@ -1,4 +1,4 @@
-name: Build FXI Work Hub APK
+name: Build FXI Work Hub Release APK
 
 on:
   workflow_dispatch:
@@ -19,6 +19,7 @@ jobs:
 
       - name: Unpack FXI Work Hub
         run: |
+          rm -rf build-src
           mkdir -p build-src
           unzip -q FXI_Work_Hub_v0.1.0_BUILD_READY.zip -d build-src
 
@@ -46,21 +47,30 @@ jobs:
           CI: "1"
         run: npx expo prebuild --platform android --non-interactive
 
-      - name: Build APK
+      - name: Build standalone release APK
         working-directory: build-src/FXI_Work_Hub_v0.1.0/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Collect APK
+      - name: Find and collect APK
         run: |
           mkdir -p output
-          cp build-src/FXI_Work_Hub_v0.1.0/android/app/build/outputs/apk/debug/app-debug.apk \
-             output/FXI-Work-Hub-v0.1.0.apk
+          APK=$(find build-src/FXI_Work_Hub_v0.1.0/android/app/build/outputs/apk/release \
+            -type f -name "*.apk" | head -1)
 
-      - name: Upload APK
+          echo "APK found at: $APK"
+
+          if [ -z "$APK" ]; then
+            echo "Release APK was not found."
+            exit 1
+          fi
+
+          cp "$APK" output/FXI-Work-Hub-v0.1.0-RELEASE.apk
+
+      - name: Upload finished APK
         uses: actions/upload-artifact@v4
         with:
-          name: FXI-Work-Hub-v0.1.0-APK
-          path: output/FXI-Work-Hub-v0.1.0.apk
+          name: FXI-Work-Hub-v0.1.0-RELEASE
+          path: output/FXI-Work-Hub-v0.1.0-RELEASE.apk
           retention-days: 30
